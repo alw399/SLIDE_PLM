@@ -18,19 +18,6 @@ from torchvision.utils import save_image, make_grid
 import torch.optim as optim
 from torch.utils.data import TensorDataset
 
-parser = argparse.ArgumentParser('Test VAE to downsize embeddings (HL2)')
-parser.add_argument('--plm_vectors',required=True,help='pLM vectors (pickle)')
-parser.add_argument('--input_dim',required=True,help='input dim',default=128)
-parser.add_argument('--hidden1_dim',required=True,help='hidden1 dim',default=64)
-parser.add_argument('--latent_dim',required=True,help='latent dim',default=2)
-parser.add_argument('--hidden2_dim',required=True,help='hidden2 dim (reduced size)',default=4)
-parser.add_arguemnt('--output_vec_name',required=True,help='name for reduced vectors')
-
-# already embedded previously!
-with open(args.plm_vectors, 'rb') as f:  
-    vecs = pickle.load(f) # serialize the list
-print('Number of Vectors: '+str(len(vecs)))
-
 # Define the VAE model
 class VAE1D(nn.Module):
     def __init__(self, input_dim, latent_dim, hidden_dim1, hidden_dim2): # 128, 2, 64?, 4 (SLIDE)
@@ -74,57 +61,72 @@ def vae_loss(recon_x, x, mean, log_var):
     kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
     return recon_loss + kld_loss
 
-# 1D data
-tensor_data = torch.from_numpy(np.array(vecs))
-dataloader = DataLoader(TensorDataset(tensor_data), batch_size=32, shuffle=True)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('Test VAE to downsize embeddings (HL2)')
+    parser.add_argument('--plm_vectors',required=True,help='pLM vectors (pickle)')
+    parser.add_argument('--input_dim',required=True,help='input dim',default=128)
+    parser.add_argument('--hidden1_dim',required=True,help='hidden1 dim',default=64)
+    parser.add_argument('--latent_dim',required=True,help='latent dim',default=2)
+    parser.add_argument('--hidden2_dim',required=True,help='hidden2 dim (reduced size)',default=4)
+    parser.add_arguemnt('--output_vec_name',required=True,help='name for reduced vectors')
+    args = parser.parse_args()
 
-# Model, optimizer, and training
-input_dim = args.input_dim # pLM size
-latent_dim = args.latent_dim
-hidden_dim1 = args.hidden1_dim # larger or smaller?
-hidden_dim2 = args.hidden2_dim  # SLIDE
-vae = VAE1D(input_dim, latent_dim, hidden_dim1, hidden_dim2) # 128->64->2->4->128
-optimizer = optim.Adam(vae.parameters(), lr=1e-3)
+    # already embedded previously!
+    with open(args.plm_vectors, 'rb') as f:  
+        vecs = pickle.load(f) # serialize the list
+    print('Number of Vectors: '+str(len(vecs)))
 
-# Training loop
-epochs = 50
-loss_plot = []
-for epoch in range(epochs):
-    total_loss = 0
-    for batch in dataloader:
-        batch = batch[0]  # Extract data from batch
-        optimizer.zero_grad()
-        recon_batch, mean, log_var, hidden_layer2 = vae(batch)
-        loss = vae_loss(recon_batch, batch, mean, log_var)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    loss_plot.append(total_loss/len(dataloader))
-    print(f"Epoch {epoch + 1}, Loss: {total_loss / len(dataloader):.4f}")
-print("Training complete.")
+    # 1D data
+    tensor_data = torch.from_numpy(np.array(vecs))
+    dataloader = DataLoader(TensorDataset(tensor_data), batch_size=32, shuffle=True)
 
-# Testing the VAE and saving hidden layer
-vae.eval()  # Set model to evaluation mode
-with torch.no_grad():
-    test_sample = tensor_data # everything ????
-    reconstructed_samples, _, _, hidden_layer2 = vae(test_sample)
+    # Model, optimizer, and training
+    input_dim = args.input_dim # pLM size
+    latent_dim = args.latent_dim
+    hidden_dim1 = args.hidden1_dim # larger or smaller?
+    hidden_dim2 = args.hidden2_dim  # SLIDE
+    vae = VAE1D(input_dim, latent_dim, hidden_dim1, hidden_dim2) # 128->64->2->4->128
+    optimizer = optim.Adam(vae.parameters(), lr=1e-3)
 
-    # Save hidden layers to a file
-    hidden_layer2_np = hidden_layer2.numpy()
-    np.save(args.output_name+"_ReducedVecs.npy", hidden_layer2_np)  # Save as .npy file
+    # Training loop
+    epochs = 50
+    loss_plot = []
+    for epoch in range(epochs):
+        total_loss = 0
+        for batch in dataloader:
+            batch = batch[0]  # Extract data from batch
+            optimizer.zero_grad()
+            recon_batch, mean, log_var, hidden_layer2 = vae(batch)
+            loss = vae_loss(recon_batch, batch, mean, log_var)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        loss_plot.append(total_loss/len(dataloader))
+        print(f"Epoch {epoch + 1}, Loss: {total_loss / len(dataloader):.4f}")
+    print("Training complete.")
 
-    # Evaluate reconstruction metrics
-    test_sample_np = test_sample.numpy()
-    reconstructed_samples_np = reconstructed_samples.numpy()
+    # Testing the VAE and saving hidden layer
+    vae.eval()  # Set model to evaluation mode
+    with torch.no_grad():
+        test_sample = tensor_data # everything ????
+        reconstructed_samples, _, _, hidden_layer2 = vae(test_sample)
 
-    mse = mean_squared_error(test_sample_np, reconstructed_samples_np)
-    mae = mean_absolute_error(test_sample_np, reconstructed_samples_np)
+        # Save hidden layers to a file
+        hidden_layer2_np = hidden_layer2.numpy()
+        np.save(args.output_name+"_ReducedVecs.npy", hidden_layer2_np)  # Save as .npy file
 
-    print("Mean Squared Error (MSE) on test data:", mse)
-    print("Mean Absolute Error (MAE) on test data:", mae)
+        # Evaluate reconstruction metrics
+        test_sample_np = test_sample.numpy()
+        reconstructed_samples_np = reconstructed_samples.numpy()
 
-# plot loss
-plt.plot(loss_plot,range(epochs))
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.savefig(args.output_name+'_LossPlot.png')
+        mse = mean_squared_error(test_sample_np, reconstructed_samples_np)
+        mae = mean_absolute_error(test_sample_np, reconstructed_samples_np)
+
+        print("Mean Squared Error (MSE) on test data:", mse)
+        print("Mean Absolute Error (MAE) on test data:", mae)
+
+    # plot loss
+    plt.plot(loss_plot,range(epochs))
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.savefig(args.output_name+'_LossPlot.png')
