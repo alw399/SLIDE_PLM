@@ -30,14 +30,17 @@ class Interaction():
     def get_plm_embedding(self, dim=32):
         print('Warning: hardcoded path to plm embedding')
         
+        # dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8'
+        dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY'
+
         if dim == 128:
-            path = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8_D2V_vecs_beta_k7_FI.pkl'
+            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI.pkl'
         elif dim == 64:
-            path = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8_D2V_vecs_beta_k7_FI_64.pkl'
+            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_64.pkl'
         elif dim == 32:
-            path = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8_D2V_vecs_beta_k7_FI_32.pkl'
+            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_32.pkl'
         elif dim == 16:
-            path = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8_D2V_vecs_beta_k7_FI_16.pkl'
+            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_16.pkl'
         else:
             return np.load('/ix/djishnu/Jane/SLIDE_PLM/jing_expansion/KIR+CD8_testVAE_hidden_layer2.npy')
 
@@ -49,7 +52,8 @@ class Interaction():
         
     def get_y(self):
         print('Warning: hardcoded path to y')
-        return pd.read_csv('/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8_Yexpanded_filtered85.csv')['Y'].values
+        # return pd.read_csv('/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8/KIR+CD8_Yexpanded_filtered85.csv')['Y'].values
+        return pd.read_csv('/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY_Yexpanded_filtered85.csv')['Y'].values
 
     @staticmethod
     def get_interaction_terms(z_matrix, plm_embedding):
@@ -59,7 +63,7 @@ class Interaction():
         return np.einsum('ij,ik->ijk', z_matrix, plm_embedding)
 
     @staticmethod
-    def filter_knockoffs(interaction_terms, y):
+    def filter_knockoffs(interaction_terms, y, fdr=0.05):
         '''
         @return: mask of 0,1 significant interaction terms
         '''
@@ -74,10 +78,10 @@ class Interaction():
 
         kfilter = KnockoffFilter(
             ksampler='gaussian', 
-            fstat='ridge'
+            fstat='lasso'
         )
 
-        rejections = kfilter.forward(X=interaction_terms, y=y, fdr=0.2, shrinkage="ledoitwolf")
+        rejections = kfilter.forward(X=interaction_terms, y=y, fdr=fdr, shrinkage="ledoitwolf")
         return rejections
     
     @staticmethod
@@ -90,7 +94,7 @@ class Interaction():
 
         return LP, beta
 
-    def compute(self):
+    def compute(self, fdr=0.1):
 
         z_matrix = self.z_matrix
         plm_embedding = self.plm_embedding
@@ -107,7 +111,7 @@ class Interaction():
 
         # Identify significant interaction terms
 
-        rejections = self.filter_knockoffs(all_terms.reshape(n, -1), y)
+        rejections = self.filter_knockoffs(all_terms.reshape(n, -1), y, fdr=fdr)
         self.rejections = rejections
 
         beta_interaction = beta_all[k:].copy()
