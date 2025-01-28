@@ -1,11 +1,17 @@
 import numpy as np 
 import pandas as pd
-from sklearn.neural_network import MLPClassifier
+from tqdm import tqdm
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.multioutput import MultiOutputRegressor
 
 
 class EmbeddingEvaluator():
-    def __init__(self):
-        pass
+    def __init__(self, model=None):
+
+        self.model = model
+        if model is None:
+            self.model = MultiOutputRegressor(MLPRegressor())
+
 
     @staticmethod
     def zero_out_dim(embed, dim):
@@ -19,25 +25,25 @@ class EmbeddingEvaluator():
         embedding[:, dim] = 0
         return embedding
     
-    @staticmethod
-    def predict(X, y):
-        clf = MLPClassifier()
+    def predict(self, X, y):
+        clf = self.model
         clf.fit(X, y)
+        yhat = clf.predict(X)
 
-        accuracy = clf.score(X, y)
-        return accuracy
+        loss = yhat - y
+        return loss
 
     def get_contributions(self, embedding, y):
 
         baseline = self.predict(embedding, y)
 
-        accuracies = [baseline]
-        for i in range(embedding.shape[1]):
+        losses = [baseline]
+        for i in tqdm(range(embedding.shape[1]), desc='Performing deletion experiments...'):
             zeroed_embedding = self.zero_out_dim(embedding, i)
-            accuracy = self.predict(zeroed_embedding, y)
-            accuracies.append(accuracy)
+            loss = self.predict(zeroed_embedding, y)
+            losses.append(loss)
 
-        return accuracies
+        return np.array(losses)
 
 
 

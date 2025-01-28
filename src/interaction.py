@@ -31,23 +31,26 @@ class Interaction():
         print('Warning: hardcoded path to plm embedding')
         
         # dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8'
-        dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY'
+        # dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY'
+        # if dim == 128:
+        #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI.pkl'
+        # elif dim == 64:
+        #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_64.pkl'
+        # elif dim == 32:
+        #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_32.pkl'
+        # elif dim == 16:
+        #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_16.pkl'
+        # else:
+        #     return np.load('/ix/djishnu/Jane/SLIDE_PLM/jing_expansion/KIR+CD8_testVAE_hidden_layer2.npy')
+        # with open(path, 'rb') as f:
+        #     plm_embedding = pickle.load(f)
+        # plm_embedding = np.array(plm_embedding)
 
-        if dim == 128:
-            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI.pkl'
-        elif dim == 64:
-            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_64.pkl'
-        elif dim == 32:
-            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_32.pkl'
-        elif dim == 16:
-            path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_16.pkl'
-        else:
-            return np.load('/ix/djishnu/Jane/SLIDE_PLM/jing_expansion/KIR+CD8_testVAE_hidden_layer2.npy')
-
-        with open(path, 'rb') as f:
-            plm_embedding = pickle.load(f)
+        dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data'
+        path = f'{dataset_prefix}/ESM2_PCA{dim}_KIR+TEDDY.npy'
+        plm_embedding = np.load(path)        
         
-        return np.array(plm_embedding)
+        return plm_embedding
 
         
     def get_y(self):
