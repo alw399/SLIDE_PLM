@@ -1,6 +1,8 @@
 from glob import glob
 import pandas as pd
 from pathlib import Path
+from glob import glob
+import os
 
 
 def get_sigLFs(slide_outs):
@@ -14,3 +16,12 @@ def get_sigLFs(slide_outs):
 
     return sig_LFs
 
+def get_genes_from_slide_outs(slide_outs):
+    gene_lists = glob(f'{slide_outs}/*_list*')
+    genes = {}
+
+    for path in gene_lists:
+        lf = os.path.basename(path).split('_')[-1].split('.')[0]
+        genes[lf] = list(pd.read_csv(path, sep='\t')['names'])
+    
+    return genes
