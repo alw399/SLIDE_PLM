@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd 
 import os, pickle
 
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 from knockpy import KnockoffFilter
 
 from util import get_sigLFs
 
 class Interaction():
 
-    def __init__(self, slide_outs, plm_embed=None, y=None):
+    def __init__(self, slide_outs, plm_embed=None, y=None, model='lasso'):
         self.slide_outs = slide_outs
         self.sig_LFs = get_sigLFs(slide_outs)
 
@@ -22,6 +22,10 @@ class Interaction():
 
         self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding)
 
+        if model == 'lasso':
+            self.model = Lasso(alpha=0.1)
+        else:
+            self.model = LinearRegression()
 
     def get_z_matrix(self):
         z_matrix = pd.read_csv(os.path.join(self.slide_outs, 'z_matrix.csv'), index_col=0)
@@ -87,10 +91,9 @@ class Interaction():
         rejections = kfilter.forward(X=interaction_terms, y=y, fdr=fdr, shrinkage="ledoitwolf")
         return rejections
     
-    @staticmethod
-    def fit_linear(z_matrix, y):
+    def fit_linear(self, z_matrix, y):
         '''fit z-matrix in linear part to get LP'''
-        reg = LinearRegression().fit(z_matrix, y)
+        reg = self.model.fit(z_matrix, y)
         
         LP = reg.predict(z_matrix)
         beta = reg.coef_       
