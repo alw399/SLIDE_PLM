@@ -25,3 +25,15 @@ def get_genes_from_slide_outs(slide_outs):
         genes[lf] = list(pd.read_csv(path, sep='\t')['names'])
     
     return genes
+
+def compute_auc(yhat, y):
+    '''
+    Compute the AUC score
+    @param yhat: predicted values
+    @param y: true values
+    @return auc: AUC score
+    '''
+    from sklearn.metrics import roc_auc_score
+    yhat = [1 if i >= 0.5 else 0 for i in yhat]
+    auc = roc_auc_score(y, yhat)
+    return auc
