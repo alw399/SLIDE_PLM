@@ -37,3 +37,4 @@ def compute_auc(yhat, y):
     yhat = [1 if i >= 0.5 else 0 for i in yhat]
     auc = roc_auc_score(y, yhat)
     return auc
+

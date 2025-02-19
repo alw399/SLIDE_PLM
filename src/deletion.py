@@ -10,7 +10,7 @@ class EmbeddingEvaluator():
 
         self.model = model
         if model is None:
-            self.model = MultiOutputRegressor(MLPRegressor())
+            self.model = MLPRegressor()
 
 
     @staticmethod

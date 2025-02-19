@@ -9,58 +9,35 @@ from util import get_sigLFs
 
 class Interaction():
 
-    def __init__(self, slide_outs, plm_embed=None, y=None, model='lasso'):
+    def __init__(self, slide_outs, plm_embed=None, y=None, interacts_only=False, model='lasso'):
         self.slide_outs = slide_outs
         self.sig_LFs = get_sigLFs(slide_outs)
+        self.interacts_only = interacts_only
 
         self.plm_embedding = plm_embed
         self.y = y
 
-        self.z_matrix = self.get_z_matrix()
+        self.z_matrix = self.get_z_matrix(interacts_only=interacts_only)
         self.n, self.k = self.z_matrix.shape
-        self.l = self.plm_embedding.shape[1]
+        self.l = self.plm_embedding.shape[1] 
 
         self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding)
 
         if model == 'lasso':
             self.model = Lasso(alpha=0.1)
-        else:
+        elif model == 'LR':
             self.model = LinearRegression()
+        else:
+            raise ValueError('Model not supported')
 
-    def get_z_matrix(self):
+    def get_z_matrix(self, interacts_only=True):
         z_matrix = pd.read_csv(os.path.join(self.slide_outs, 'z_matrix.csv'), index_col=0)
-        z_matrix = z_matrix[self.sig_LFs]
-        return z_matrix.values
+        z_matrix = z_matrix[self.sig_LFs].values
 
-    # def get_plm_embedding(self, dim=32):
-    #     print('Warning: hardcoded path to plm embedding')
-        
-    #     # dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8'
-    #     # dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY'
-    #     # if dim == 128:
-    #     #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI.pkl'
-    #     # elif dim == 64:
-    #     #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_64.pkl'
-    #     # elif dim == 32:
-    #     #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_32.pkl'
-    #     # elif dim == 16:
-    #     #     path = f'{dataset_prefix}_D2V_vecs_beta_k7_FI_16.pkl'
-    #     # else:
-    #     #     return np.load('/ix/djishnu/Jane/SLIDE_PLM/jing_expansion/KIR+CD8_testVAE_hidden_layer2.npy')
-    #     # with open(path, 'rb') as f:
-    #     #     plm_embedding = pickle.load(f)
-    #     # plm_embedding = np.array(plm_embedding)
+        if not interacts_only:
+            z_matrix = np.hstack([z_matrix, np.ones((z_matrix.shape[0], 1))])
 
-    #     dataset_prefix = '/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data'
-    #     path = f'{dataset_prefix}/ESM2_PCA{dim}_KIR+TEDDY.npy'
-    #     plm_embedding = np.load(path)        
-        
-    #     return plm_embedding
-        
-    # def get_y(self):
-    #     print('Warning: hardcoded path to y')
-    #     # return pd.read_csv('/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+CD8/data/KIR+CD8/KIR+CD8_Yexpanded_filtered85.csv')['Y'].values
-    #     return pd.read_csv('/ix/djishnu/Jane/SLIDESWING/jing_data/KIR+TEDDY/data/KIR+TEDDY_Yexpanded_filtered85.csv')['Y'].values
+        return z_matrix
 
     @staticmethod
     def get_interaction_terms(z_matrix, plm_embedding):
@@ -129,6 +106,10 @@ class Interaction():
 
         return self.sig_interaction
     
+    
+
+
+            
 
 
 

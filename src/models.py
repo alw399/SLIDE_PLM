@@ -4,13 +4,46 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from torch.utils.data import Dataset
 import torch.optim as optim
-
-from tqdm import tqdm
+import numpy as np
 
 if torch.cuda.is_available:
     device = 'cuda'
 else:
     device = 'cpu'
+
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
+class Estimator():
+    def __init__(self, model):
+        self.model = model
+    
+    def fit(self, X, y):
+        return self.model.fit(X, y)
+    
+    def predict(self, X):
+        return self.model.predict(X)
+    
+    def train_test_split(self, X, y, test_size=0.2, seed=1334):
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=seed)
+        return X_train, X_test, y_train, y_test
+
+    def score(self, yhat, y):
+        yhat = [1 if i >= 0.5 else 0 for i in yhat]
+        auc = roc_auc_score(y, yhat)
+        return auc
+
+    def evaluate(self, X, y, n_iters=10):
+        scores = [] 
+        for iter in range(n_iters):
+            X_train, X_test, y_train, y_test = self.train_test_split(X, y, seed=iter)
+            self.fit(X_train, y_train)
+            y_pred = self.predict(X_test)
+            scores.append(self.score(y_pred, y_test))
+        return np.array(scores)
+
 
 class SimpleNN(nn.Module):
     def __init__(self, input_dim, output_dim):

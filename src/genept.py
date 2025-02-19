@@ -12,6 +12,7 @@ class GenePTEmbedder():
         with open(gene2embed_path, 'rb') as f:
             self.gene2embed = pickle.load(f)
         
+        self.blank = np.zeros(1536)
 
         gene2summary_path = os.path.join(self.path, 'NCBI_summary_of_genes.json')
         with open(gene2summary_path, 'r') as f:
@@ -25,6 +26,6 @@ class GenePTEmbedder():
 
     def get_gene_info(self, genes, embedding=True):
         if embedding:
-            return np.array([self.gene2embed[gene] for gene in genes if gene in self.gene2embed])
+            return np.array([self.gene2embed.get(gene, self.blank) for gene in genes])
         else:
-            return [self.gene2summary[gene] for gene in genes if gene in self.gene2summary]
+            return [self.gene2summary.get(gene, self.blank) for gene in genes]
