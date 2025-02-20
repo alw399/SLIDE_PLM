@@ -13,6 +13,6 @@
 cd /ix/djishnu/Jane/SLIDE_PLM/
 
 module load python/ondemand-jupyter-python3.9
-source activate esm2
+source activate /ix/djishnu/Jane/.conda/envs/esm2
 
 python Run_ESM2.py -df data.csv -s sequence -n TotalTeddy
