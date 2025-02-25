@@ -1,5 +1,6 @@
 from glob import glob
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from glob import glob
 import os
@@ -38,3 +39,23 @@ def compute_auc(yhat, y):
     auc = roc_auc_score(y, yhat)
     return auc
 
+
+def compute_cohens_d(group1, group2):
+    # Calculate means
+    mean1 = np.mean(group1)
+    mean2 = np.mean(group2)
+    
+    # Calculate standard deviations
+    std1 = np.std(group1, ddof=1)
+    std2 = np.std(group2, ddof=1)
+    
+    # Calculate sample sizes
+    n1 = len(group1)
+    n2 = len(group2)
+    
+    # Calculate pooled standard deviation
+    sp = np.sqrt(((n1 - 1) * std1**2 + (n2 - 1) * std2**2) / (n1 + n2 - 2))
+    
+    # Calculate Cohen's d
+    d = (mean1 - mean2) / sp
+    return d
