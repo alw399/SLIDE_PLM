@@ -10,7 +10,14 @@ from util import get_sigLFs, compute_cohens_d, compute_auc
 
 class Interaction():
 
-    def __init__(self, slide_outs, plm_embed=None, y=None, interacts_only=False, model='LR'):
+    def __init__(
+            self, slide_outs, 
+            plm_embed, y, 
+            z_matrix=None,
+            interacts_only=False, 
+            model='LR'
+        ):
+
         self.slide_outs = slide_outs
         self.sig_LFs = get_sigLFs(slide_outs)
         self.interacts_only = interacts_only
@@ -24,7 +31,7 @@ class Interaction():
 
         self.y = y
 
-        self.z_matrix = self.get_z_matrix(interacts_only=interacts_only)
+        self.z_matrix = self.get_z_matrix(z_matrix, interacts_only=interacts_only)
         self.n, self.k = self.z_matrix.shape
         self.l = self.plm_embedding.shape[1] 
 
@@ -37,9 +44,10 @@ class Interaction():
         else:
             raise ValueError('Model not supported')
 
-    def get_z_matrix(self, interacts_only=True):
-        z_matrix = pd.read_csv(os.path.join(self.slide_outs, 'z_matrix.csv'), index_col=0)
-        z_matrix = z_matrix[self.sig_LFs].values
+    def get_z_matrix(self, z_matrix=None, interacts_only=True):
+        if z_matrix is None:
+            z_matrix = pd.read_csv(os.path.join(self.slide_outs, 'z_matrix.csv'), index_col=0)
+            z_matrix = z_matrix[self.sig_LFs].values
 
         if not interacts_only:
             z_matrix = np.hstack([
@@ -202,6 +210,8 @@ class Interaction():
         if z2:
             # Prevent last row from being filtered out
             self.sig_mask[-1, :] = 1
+        
+        self.sig_mask[-1, -1] = 0 # This term is meaningless
         
 
         # Refit to get the new coefficients

@@ -39,6 +39,21 @@ def compute_auc(yhat, y):
     auc = roc_auc_score(y, yhat)
     return auc
 
+def remove_empty_tcrs(sequences, y=None, z_matrix=None, null_value='-', remove_nans=True):
+    if remove_nans:
+        sequences.fillna(null_value, inplace=True)
+
+    nulls = np.where(sequences == null_value)[0]
+    sequences = np.delete(sequences, nulls)
+
+    if y is not None:
+        y = np.delete(y, nulls)
+    
+    if z_matrix is not None:
+        z_matrix = np.delete(z_matrix, nulls, axis=0)
+
+    return sequences, y, z_matrix
+
 
 def compute_cohens_d(group1, group2):
     # Calculate means

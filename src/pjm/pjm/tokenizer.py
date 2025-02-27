@@ -139,7 +139,6 @@ class Alphabet(object):
     def encode(self, text):
         return [self.tok_to_idx[tok] for tok in self.tokenize(text)]
 
-
 class BatchConverter(object):
     """Callable to convert an unprocessed (labels + strings) batch to a
     processed (labels + tensor) batch.

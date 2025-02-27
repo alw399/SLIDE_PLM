@@ -2,11 +2,15 @@ import pandas as pd
 import numpy as np
 import seaborn as sns 
 import matplotlib.pyplot as plt
+import os 
 
-def show_interactions(machop):
+from statannotations.Annotator import Annotator
+import itertools 
 
-    sig_interaction = machop.sig_interaction
+def show_interactions(machop, save_path=None):
+
     beta_interaction = machop.beta_interaction
+    sig_interaction = machop.sig_mask * beta_interaction
 
     index = machop.sig_LFs.copy()
     columns = list(range(machop.l))
@@ -19,7 +23,7 @@ def show_interactions(machop):
 
     df_sig = pd.DataFrame(sig_interaction, index=index, columns=columns)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 6))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(24, 8))
 
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
@@ -33,9 +37,60 @@ def show_interactions(machop):
     ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
     ax2.set(ylabel='LFs', xlabel='PLM embedding', title='Percentage of times significant')
 
+    # Indicate nonzero values
+    for i in range(df_sig.shape[0]):
+        for j in range(df_sig.shape[1]):
+            if df_sig.iloc[i, j] != 0:
+                ax1.text(j + 0.5, i + 0.5, f'{df_sig.iloc[i, j]:.2f}', 
+                         ha='center', va='center', color='black')
+
     plt.tight_layout()
 
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
 
+
+def show_performance(model, df, save_path=None):
+
+    df = df.melt(id_vars='index', var_name='iter', value_name='auc')
+
+    fig, ax = plt.subplots(figsize=(6,6), dpi=150)
+    order = np.unique(df['index'])
+
+    sns.boxplot(data=df, x='index', y='auc', hue='index', palette='hls', ax=ax, showfliers=False, order=order)
+    sns.stripplot(data=df, x='index', y='auc', hue='index', ax=ax, palette='hls', legend=False, linewidth=1, edgecolor='black', jitter=True)
+
+    pairs=list(itertools.combinations(order, 2))
+    pairs = filter_pairs(pairs, df)
+
+    annotator = Annotator(ax, pairs, data=df, x='index', y='auc', order=order)
+    annotator.configure(test='Kruskal', text_format='star', loc='inside', verbose=2, hide_non_significant=True)
+    annotator.apply_and_annotate()
+
+    means = df.groupby('index')['auc'].mean()
+    for i, mean in zip(means.index, means):
+        plt.text(i, df['auc'].max() , f'Mean: {mean:.2f}', ha='center', va='bottom', fontsize=8, color='black')
+
+    plt.title(f'{model} Performance')
+    plt.tight_layout()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+
+
+### Helper functions ###
+
+def filter_pairs(pairs, df):
+    filtered = []
+    for i, j in pairs:
+        if not np.all(df[df['index'] == i]['auc'].values == df[df['index'] == j]['auc'].values):
+            filtered.append((i, j))
+    return filtered
+
+
+### Outdated functions ###
 
 def show_effect_sizes(machop):
 
