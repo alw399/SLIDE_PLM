@@ -156,20 +156,21 @@ class Interaction():
 
         sig_interactions = np.stack(sig_interactions, axis=0)
         sig_interactions = np.mean(sig_interactions, axis=0)
-        self.sig_interaction = sig_interactions.copy()
-
         sig_interactions = np.where(sig_interactions > thresh, 1, 0)
         self.sig_mask = sig_interactions
 
         # Get the betas for the significant interactions
         interaction_terms = self.interaction_terms * self.sig_mask
         interaction_terms = interaction_terms.reshape(self.n, self.k*self.l)
-        preds, beta_all = self.fit_linear(interaction_terms, self.y)
+        _, beta_all = self.fit_linear(interaction_terms, self.y)
 
         self.beta_interaction = beta_all.reshape(self.k, self.l)
+        self.beta_interaction = self.beta_interaction * self.sig_mask   # in case of underflow issues
 
-        # in case of underflow issues
-        self.beta_interaction = self.beta_interaction * self.sig_mask
+        self.sig_interaction = np.where(self.beta_interaction > 1e-5, self.beta_interaction, 0)
+        self.sig_mask = np.where(self.beta_interaction > 1e-5, 1, 0)
+
+        preds = interaction_terms @ self.sig_interaction.flatten()
         
         score = compute_auc(preds, self.y)
         print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
