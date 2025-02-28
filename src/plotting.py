@@ -23,7 +23,7 @@ def show_interactions(machop, save_path=None):
 
     df_sig = pd.DataFrame(sig_interaction, index=index, columns=columns)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(24, 8))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(26, 8))
 
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
