@@ -10,7 +10,7 @@ import itertools
 def show_interactions(machop, save_path=None):
 
     beta_interaction = machop.beta_interaction
-    sig_interaction = machop.sig_mask * beta_interaction
+    sig_interaction = machop.sig_mask * machop.sig_interaction
 
     index = machop.sig_LFs.copy()
     columns = list(range(machop.l))
@@ -38,10 +38,10 @@ def show_interactions(machop, save_path=None):
     ax2.set(ylabel='LFs', xlabel='PLM embedding', title='Percentage of times significant')
 
     # Indicate nonzero values
-    for i in range(df_sig.shape[0]):
+    for i in range(df.shape[0]):
         for j in range(df_sig.shape[1]):
-            if df_sig.iloc[i, j] != 0:
-                ax1.text(j + 0.5, i + 0.5, f'{df_sig.iloc[i, j]:.2f}', 
+            if df.iloc[i, j] != 0:
+                ax1.text(j + 0.5, i + 0.5, f'{df.iloc[i, j]:.2f}', 
                          ha='center', va='center', color='black')
 
     plt.tight_layout()
