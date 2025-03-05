@@ -100,7 +100,7 @@ class Interaction():
 
             all_terms = np.concatenate([z_matrix, interaction_terms], axis=1)
             _, beta_all = self.fit_linear(all_terms, y)
-            self.beta_all = beta_all.reshape(k, -1) # index_col 0 is Z1_sig standalone
+            beta_all = beta_all.reshape(k, -1) # index_col 0 is Z1_sig standalone
 
             # Identify significant interaction terms
 
@@ -112,23 +112,23 @@ class Interaction():
         else:
             
             _, beta_all = self.fit_linear(interaction_terms, y)
-            self.beta_all = beta_all.reshape(k, -1)
+            beta_all = beta_all.reshape(k, -1)
 
             # Identify significant interaction terms
 
             rejections = self.filter_knockoffs(interaction_terms, y, fdr=fdr)
 
-            beta_interaction = beta_all.copy()
+            beta_interaction = beta_all.reshape(-1)
             sig_interaction = rejections * beta_interaction
 
 
-        self.sig_interaction = sig_interaction.reshape(k,l)
-        self.sig_mask = np.where(self.sig_interaction != 0, 1, 0)       # save bc sig_interaction may be overwritten
+        sig_interaction = sig_interaction.reshape(k,l)
+        sig_mask = np.where(sig_interaction != 0, 1, 0)       # save bc sig_interaction may be overwritten
 
         beta_interaction = beta_interaction.reshape(k,l)
-        self.beta_interaction = beta_interaction
+        beta_interaction = beta_interaction
 
-        return self.sig_interaction
+        return sig_mask, beta_interaction, sig_interaction
 
     def get_joint_embed(self):
 
@@ -151,26 +151,21 @@ class Interaction():
         sig_interactions = []
 
         for i in tqdm(range(n_iters)):
-            self.compute(fdr=fdr)
-            sig_interactions.append(self.sig_mask.copy())
+            sig_mask, _, _ = self.compute(fdr=fdr)
+            sig_interactions.append(sig_mask.copy())
 
         sig_interactions = np.stack(sig_interactions, axis=0)
         sig_interactions = np.mean(sig_interactions, axis=0)
-        sig_interactions = np.where(sig_interactions > thresh, 1, 0)
-        self.sig_mask = sig_interactions
+        self.sig_interaction = sig_interactions
+        self.sig_mask = np.where(sig_interactions > thresh, 1, 0)
 
         # Get the betas for the significant interactions
         interaction_terms = self.interaction_terms * self.sig_mask
         interaction_terms = interaction_terms.reshape(self.n, self.k*self.l)
-        _, beta_all = self.fit_linear(interaction_terms, self.y)
+        preds, beta_all = self.fit_linear(interaction_terms, self.y)
 
         self.beta_interaction = beta_all.reshape(self.k, self.l)
         self.beta_interaction = self.beta_interaction * self.sig_mask   # in case of underflow issues
-
-        self.sig_interaction = np.where(self.beta_interaction > 1e-5, self.beta_interaction, 0)
-        self.sig_mask = np.where(self.beta_interaction > 1e-5, 1, 0)
-
-        preds = interaction_terms @ self.sig_interaction.flatten()
         
         score = compute_auc(preds, self.y)
         print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')

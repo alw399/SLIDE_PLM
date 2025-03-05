@@ -40,8 +40,12 @@ def compute_auc(yhat, y):
     return auc
 
 def remove_empty_tcrs(sequences, y=None, z_matrix=None, null_value='-', remove_nans=True):
+
+    if not isinstance(sequences, np.ndarray):
+        sequences = sequences.values
+
     if remove_nans:
-        sequences.fillna(null_value, inplace=True)
+        sequences = np.where(pd.isna(sequences), null_value, sequences)
 
     nulls = np.where(sequences == null_value)[0]
     sequences = np.delete(sequences, nulls)
@@ -50,7 +54,8 @@ def remove_empty_tcrs(sequences, y=None, z_matrix=None, null_value='-', remove_n
         y = np.delete(y, nulls)
     
     if z_matrix is not None:
-        z_matrix = np.delete(z_matrix, nulls, axis=0)
+        # z_matrix = np.delete(z_matrix, nulls, axis=0)
+        z_matrix = z_matrix.drop(z_matrix.index[nulls], axis=0)
 
     return sequences, y, z_matrix
 

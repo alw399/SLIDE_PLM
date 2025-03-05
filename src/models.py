@@ -13,6 +13,7 @@ else:
 
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 class Estimator():
@@ -35,8 +36,19 @@ class Estimator():
         auc = roc_auc_score(y, yhat)
         return auc
 
-    def evaluate(self, X, y, n_iters=10):
+    @staticmethod
+    def scale_features(X, feature_range=(-1, 1)):
+        scaler = MinMaxScaler(feature_range=feature_range)
+        scaler.fit(X)
+        return scaler.transform(X)
+
+    def evaluate(self, X, y, n_iters=10, scale_features=True):
         scores = [] 
+        X = X.copy()
+        
+        if scale_features:
+            X = self.scale_features(X)
+
         for iter in range(n_iters):
             X_train, X_test, y_train, y_test = self.train_test_split(X, y, seed=iter)
             self.fit(X_train, y_train)
