@@ -8,10 +8,10 @@ ENV_NAME=$(basename "$CONDA_PREFIX")
 echo "Building PJM  into the environment '$ENV_NAME'"
 
 
-# conda install pytorch=2.2.0 pytorch-cuda=12.1 -c pytorch -c nvidia -y
+mamba install pytorch=2.2.0 pytorch-cuda=12.1 -c pytorch -c nvidia -y
 pip3 install fair-esm
 pip3 install einops
-pip3 install  dgl -f https://data.dgl.ai/wheels/torch-2.2/cu121/repo.html
+pip3 install dgl -f https://data.dgl.ai/wheels/torch-2.2/cu121/repo.html
 pip3 install torch_geometric==2.2.0
 pip3 install torch-scatter -f https://data.pyg.org/whl/torch-2.2.0+cu121.html
 pip3 install torch-cluster -f https://data.pyg.org/whl/torch-2.2.0+cu121.html

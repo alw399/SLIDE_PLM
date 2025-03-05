@@ -23,7 +23,7 @@ def show_interactions(machop, save_path=None):
 
     df_sig = pd.DataFrame(sig_interaction, index=index, columns=columns)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(26, 8))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10))
 
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
@@ -43,6 +43,11 @@ def show_interactions(machop, save_path=None):
             if df.iloc[i, j] != 0:
                 ax1.text(j + 0.5, i + 0.5, f'{df.iloc[i, j]:.2f}', 
                          ha='center', va='center', color='black')
+            
+            if df_sig.iloc[i, j] != 0:
+                ax2.text(j + 0.5, i + 0.5, f'{df_sig.iloc[i, j]:.2f}', 
+                         ha='center', va='center', color='black')
+            
 
     plt.tight_layout()
 
