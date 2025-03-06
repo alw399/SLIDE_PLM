@@ -17,6 +17,7 @@ def get_sigLFs(slide_outs):
 
     return sig_LFs
 
+
 def get_genes_from_slide_outs(slide_outs):
     gene_lists = glob(f'{slide_outs}/*_list*')
     genes = {}

@@ -1,7 +1,8 @@
 import numpy as np 
 import pandas as pd 
 import os, pickle
-from tqdm import tqdm
+# from tqdm import tqdm
+import enlighten
 
 from sklearn.linear_model import LinearRegression, Lasso
 from knockpy import KnockoffFilter
@@ -19,7 +20,6 @@ class Interaction():
         ):
 
         self.slide_outs = slide_outs
-        self.sig_LFs = get_sigLFs(slide_outs)
         self.interacts_only = interacts_only
 
         if interacts_only:
@@ -31,7 +31,14 @@ class Interaction():
 
         self.y = y
 
-        self.z_matrix = self.get_z_matrix(z_matrix, interacts_only=interacts_only)
+        self.z_matrix = self.get_z_matrix(
+            z_matrix, interacts_only=interacts_only)
+        if z_matrix is None:
+            self.sig_LFs = get_sigLFs(slide_outs)
+        else:
+            self.sig_LFs = list(z_matrix.columns)
+        
+        
         self.n, self.k = self.z_matrix.shape
         self.l = self.plm_embedding.shape[1] 
 
@@ -50,9 +57,10 @@ class Interaction():
             z_matrix = z_matrix[self.sig_LFs].values
 
         if not interacts_only:
+            n_obs = z_matrix.shape[0]
             z_matrix = np.hstack([
-                    z_matrix, 
-                    np.ones((z_matrix.shape[0], 1))])
+                    z_matrix.values.reshape(n_obs, -1), 
+                    np.ones((n_obs, 1))])
 
         return z_matrix
 
@@ -150,9 +158,29 @@ class Interaction():
         
         sig_interactions = []
 
-        for i in tqdm(range(n_iters)):
+        manager = enlighten.get_manager()
+        pbar = manager.counter(
+            total=n_iters, 
+            desc='Computing interactions', 
+            unit='iter', 
+            color='pink', 
+            autorefresh=True
+        )
+
+        for i in range(n_iters):
             sig_mask, _, _ = self.compute(fdr=fdr)
             sig_interactions.append(sig_mask.copy())
+
+            pbar.desc = f'Iteration {i}: Found {sig_mask.sum()} significant interactions'
+            pbar.refresh()
+            pbar.count = i+1
+
+        pbar.close()
+
+        # for i in tqdm(range(n_iters)):
+        #     sig_mask, _, _ = self.compute(fdr=fdr)
+        #     sig_interactions.append(sig_mask.copy())
+        
 
         sig_interactions = np.stack(sig_interactions, axis=0)
         sig_interactions = np.mean(sig_interactions, axis=0)

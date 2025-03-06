@@ -10,7 +10,7 @@ import itertools
 def show_interactions(machop, save_path=None):
 
     beta_interaction = machop.beta_interaction
-    sig_interaction = machop.sig_mask * machop.sig_interaction
+    sig_interaction = machop.sig_interaction
 
     index = machop.sig_LFs.copy()
     columns = list(range(machop.l))
