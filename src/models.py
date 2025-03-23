@@ -5,6 +5,7 @@ import torch.nn.init as init
 from torch.utils.data import Dataset
 import torch.optim as optim
 import numpy as np
+import pandas as pd
 
 if torch.cuda.is_available:
     device = 'cuda'
@@ -13,7 +14,7 @@ else:
 
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tqdm import tqdm
 
 class Estimator():
@@ -37,8 +38,15 @@ class Estimator():
         return auc
 
     @staticmethod
-    def scale_features(X, feature_range=(-1, 1)):
-        scaler = MinMaxScaler(feature_range=feature_range)
+    def scale_features(X, minmax=False, feature_range=(-1, 1)):
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+
+        if minmax:
+            scaler = MinMaxScaler(feature_range=feature_range)
+        else:
+            scaler = StandardScaler()
+            
         scaler.fit(X)
         return scaler.transform(X)
 

@@ -23,7 +23,7 @@ def show_interactions(machop, save_path=None):
 
     df_sig = pd.DataFrame(sig_interaction, index=index, columns=columns)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 20))
 
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
@@ -69,9 +69,10 @@ def show_performance(model, df, save_path=None):
     pairs=list(itertools.combinations(order, 2))
     pairs = filter_pairs(pairs, df)
 
-    annotator = Annotator(ax, pairs, data=df, x='index', y='auc', order=order)
-    annotator.configure(test='Kruskal', text_format='star', loc='inside', verbose=2, hide_non_significant=True)
-    annotator.apply_and_annotate()
+    if pairs is not None:
+        annotator = Annotator(ax, pairs, data=df, x='index', y='auc', order=order)
+        annotator.configure(test='Kruskal', text_format='star', loc='inside', verbose=2, hide_non_significant=True)
+        annotator.apply_and_annotate()
 
     means = df.groupby('index')['auc'].mean()
     for i, mean in zip(means.index, means):
@@ -88,11 +89,14 @@ def show_performance(model, df, save_path=None):
 ### Helper functions ###
 
 def filter_pairs(pairs, df):
-    filtered = []
-    for i, j in pairs:
-        if not np.all(df[df['index'] == i]['auc'].values == df[df['index'] == j]['auc'].values):
-            filtered.append((i, j))
-    return filtered
+    try:
+        filtered = []
+        for i, j in pairs:
+            if not np.all(df[df['index'] == i]['auc'].values == df[df['index'] == j]['auc'].values):
+                filtered.append((i, j))
+        return filtered
+    except:
+        return None
 
 
 ### Outdated functions ###

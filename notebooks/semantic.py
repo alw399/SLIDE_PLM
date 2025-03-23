@@ -20,7 +20,7 @@ from statannotations.Annotator import Annotator
 import itertools 
 
 
-results_dir = '/ix/djishnu/alw399/SLIDE_PLM/results'
+results_dir = '/ix/djishnu/alw399/SLIDE_PLM/results/semantic'
 
 def filter_pairs(pairs, df):
     filtered = []
@@ -87,6 +87,10 @@ for name, info in runs_dict.items():
     species = info['species']
 
     lf_dict = get_genes_from_slide_outs(slide_outs)
+    
+    if name == 'jing_tumor': # Interactors did not contribute to signal
+        lf_dict = {'Z7': lf_dict['Z7']}
+
     all_genes = np.unique(np.concatenate([lf_dict[lf] for lf in lf_dict]))
 
     genept = GenePTEmbedder(species='human')
@@ -111,26 +115,29 @@ for name, info in runs_dict.items():
 
     os.makedirs(f'{results_dir}/{name}', exist_ok=True)
 
-    for model in [
-        Lasso(alpha=0.1, max_iter=10000),
+    scale_features = [True, False, True]
+    for i, model in enumerate([
+        Lasso(alpha=0.05, max_iter=10000),
         LinearRegression(),
         MLPClassifier(max_iter=1000)
-        ]:
+        ]):
+
+        should_scale = scale_features[i]
 
         lasso0 = Estimator(model=model)
-        auc0 = lasso0.evaluate(z_matrix, y)
+        auc0 = lasso0.evaluate(z_matrix, y, scale_features=should_scale)
 
         lasso1 = Estimator(model=model)
-        auc1 = lasso0.evaluate(gex_df.values, y)
+        auc1 = lasso0.evaluate(gex_df.values, y, scale_features=should_scale)
 
         lasso2 = Estimator(model=model)
-        auc2 = lasso2.evaluate(mask_df.values, y)
+        auc2 = lasso2.evaluate(mask_df.values, y, scale_features=should_scale)
 
         lasso3 = Estimator(model=model)
-        auc3 = lasso3.evaluate(genept_df, y)
+        auc3 = lasso3.evaluate(genept_df, y, scale_features=should_scale)
 
         lasso4 = Estimator(model=model)
-        auc4 = lasso3.evaluate(wgenept_df.values, y)
+        auc4 = lasso3.evaluate(wgenept_df.values, y, scale_features=should_scale)
 
         df = pd.DataFrame(
             np.vstack([auc0, auc1, auc2, auc3, auc4]),
@@ -141,6 +148,7 @@ for name, info in runs_dict.items():
         df = df.melt(id_vars='index', var_name='iter', value_name='auc')
 
         ### Start plotting ###
+                
         fig, ax = plt.subplots(figsize=(10,10), dpi=150)
 
         sns.boxplot(data=df, x='index', y='auc', hue='index', palette='hls', ax=ax, showfliers=False, order=np.unique(df['index']))
@@ -157,9 +165,9 @@ for name, info in runs_dict.items():
         for i, mean in zip(means.index, means):
             plt.text(i, df['auc'].max()+0.001 , f'Mean: {mean:.2f}', ha='center', va='bottom', fontsize=8, color='black')
 
-        plt.title(f'{model.__class__.__name__} Performance')
-        plt.savefig(f'{results_dir}/{name}/semantic_{model.__class__.__name__}.png')
+        plt.title(f'{model} Performance')
         plt.tight_layout()
+        plt.savefig(f'{results_dir}/{name}/semantic_{model.__class__.__name__}.png')
         plt.close()
 
 
