@@ -146,8 +146,7 @@ class Interaction():
 
         joint_embed = np.einsum('ij,j->ij', interaction_terms, coefs)
         self.joint_embed = joint_embed
-
-
+    
     def get_sig_interactions(self, fdr=0.5, n_iters=10, thresh=0.4):
         '''
         Attributes:
@@ -155,6 +154,12 @@ class Interaction():
         sig_mask: Binary mask indicating significant interactions based on the threshold.
         beta_interaction: Coefficients for the significant interaction terms.
         '''
+
+        self.params = {
+            'fdr': fdr,
+            'n_iters': n_iters,
+            'thresh': thresh
+        }
         
         sig_interactions = []
 
