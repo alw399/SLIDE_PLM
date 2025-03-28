@@ -56,12 +56,13 @@ def show_interactions(machop, save_path=None):
         plt.savefig(save_path)
 
 
-def show_performance(model, df, save_path=None):
+def show_performance(model, df, save_path=None, figsize=(6,6), order=None):
 
     df = df.melt(id_vars='index', var_name='iter', value_name='auc')
 
-    fig, ax = plt.subplots(figsize=(6,6), dpi=150)
-    order = np.unique(df['index'])
+    fig, ax = plt.subplots(figsize=figsize, dpi=150)
+    if order is None:
+        order = np.unique(df['index'])
 
     sns.boxplot(data=df, x='index', y='auc', hue='index', palette='hls', ax=ax, showfliers=False, order=order)
     sns.stripplot(data=df, x='index', y='auc', hue='index', ax=ax, palette='hls', legend=False, linewidth=1, edgecolor='black', jitter=True)
