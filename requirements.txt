@@ -1,0 +1,28 @@
+esm
+fair-esm
+einops
+torch==2.6
+torchvision
+torch_geometric
+torch-scatter
+torch-sparse
+dgl==2.1.0
+biotite
+lightning
+jupyter
+ipykernel
+scipy
+anndata
+ipykernel
+enlighten
+statannotations
+# numpy==1.26
+appdirs
+click
+protobuf==3.20
+wandb==0.16.6
+# conda install -c dglteam/label/th24_cu124 dgl # check cuda version 
+# knockpy
+# scanpy
+# conda install cython
+# pip install git+https://github.com/jcrudy/choldate.git

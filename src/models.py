@@ -34,6 +34,8 @@ class Estimator():
 
     def score(self, yhat, y):
         yhat = [1 if i >= 0.5 else 0 for i in yhat]
+        if len(set(y)) == 1:
+            return None
         auc = roc_auc_score(y, yhat)
         return auc
 
@@ -63,6 +65,8 @@ class Estimator():
             y_pred = self.predict(X_test)
             scores.append(self.score(y_pred, y_test))
         return np.array(scores)
+    
+    
 
 
 class SimpleNN(nn.Module):
