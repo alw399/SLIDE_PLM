@@ -30,14 +30,15 @@ class Interaction():
                 np.ones((plm_embed.shape[0], 1))])
 
         self.y = y
-
-        self.z_matrix = self.get_z_matrix(
-            z_matrix, interacts_only=interacts_only)
+           
         if z_matrix is None:
             self.sig_LFs = get_sigLFs(slide_outs)
         else:
             self.sig_LFs = list(z_matrix.columns)
-        
+
+        self.z_matrix = self.get_z_matrix(
+            z_matrix, interacts_only=interacts_only)
+    
         
         self.n, self.k = self.z_matrix.shape
         self.l = self.plm_embedding.shape[1] 
