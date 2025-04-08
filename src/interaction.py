@@ -16,9 +16,11 @@ class Interaction():
             plm_embed, y, 
             z_matrix=None,
             interacts_only=False, 
-            model='LR'
+            model='LR',
+            name='Model'
         ):
-
+        
+        self.name = name
         self.slide_outs = slide_outs
         self.interacts_only = interacts_only
 
@@ -31,19 +33,20 @@ class Interaction():
 
         self.y = y
 
-        self.z_matrix = self.get_z_matrix(
-            z_matrix, interacts_only=interacts_only)
         if z_matrix is None:
             self.sig_LFs = get_sigLFs(slide_outs)
         else:
             self.sig_LFs = list(z_matrix.columns)
         
+        self.z_matrix = self.get_z_matrix(
+            z_matrix, interacts_only=interacts_only)
+                
         
         self.n, self.k = self.z_matrix.shape
         self.l = self.plm_embedding.shape[1] 
 
-        self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding)
-
+        self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding) 
+        
         if model == 'lasso':
             self.model = Lasso(alpha=0.1)
         elif model == 'LR':
@@ -52,9 +55,10 @@ class Interaction():
             raise ValueError('Model not supported')
 
     def get_z_matrix(self, z_matrix=None, interacts_only=True):
+        
         if z_matrix is None:
             z_matrix = pd.read_csv(os.path.join(self.slide_outs, 'z_matrix.csv'), index_col=0)
-            z_matrix = z_matrix[self.sig_LFs].values
+            z_matrix = z_matrix[self.sig_LFs]
 
         if not interacts_only:
             n_obs = z_matrix.shape[0]
@@ -93,10 +97,13 @@ class Interaction():
 
         return LP, beta
 
-    def compute(self, fdr=0.1):
-
-        z_matrix = self.z_matrix
-        interaction_terms = self.interaction_terms
+    def compute(self, fdr=0.1, permuted=False):
+        if permuted:
+            z_matrix = self.z_matrix_perm
+            interaction_terms = self.interaction_terms_perm
+        else:
+            z_matrix = self.z_matrix
+            interaction_terms = self.interaction_terms 
         y = self.y.copy()
         n, k, l = self.n, self.k, self.l
 
@@ -105,13 +112,13 @@ class Interaction():
         interaction_terms = interaction_terms.reshape(n,k*l)
         
         if self.interacts_only:
-
+            
             all_terms = np.concatenate([z_matrix, interaction_terms], axis=1)
             _, beta_all = self.fit_linear(all_terms, y)
             beta_all = beta_all.reshape(k, -1) # index_col 0 is Z1_sig standalone
 
             # Identify significant interaction terms
-
+            
             rejections = self.filter_knockoffs(all_terms.reshape(n, -1), y, fdr=fdr)
 
             beta_interaction = beta_all[k:].copy()
@@ -121,14 +128,14 @@ class Interaction():
             
             _, beta_all = self.fit_linear(interaction_terms, y)
             beta_all = beta_all.reshape(k, -1)
-
+            
             # Identify significant interaction terms
 
             rejections = self.filter_knockoffs(interaction_terms, y, fdr=fdr)
-
+            
             beta_interaction = beta_all.reshape(-1)
             sig_interaction = rejections * beta_interaction
-
+            
 
         sig_interaction = sig_interaction.reshape(k,l)
         sig_mask = np.where(sig_interaction != 0, 1, 0)       # save bc sig_interaction may be overwritten
@@ -146,6 +153,15 @@ class Interaction():
 
         joint_embed = np.einsum('ij,j->ij', interaction_terms, coefs)
         self.joint_embed = joint_embed
+
+    def get_joint_embed_perm(self):
+
+        sig_mask_perm = self.sig_mask_perm.astype(bool)
+        interaction_terms_perm = self.interaction_terms_perm[:, sig_mask_perm].reshape(self.n, -1)
+        coefs_perm = self.beta_interaction_perm[sig_mask_perm]
+
+        joint_embed_perm = np.einsum('ij,j->ij', interaction_terms_perm, coefs_perm)
+        self.joint_embed_perm = joint_embed_perm
     
     def get_sig_interactions(self, fdr=0.5, n_iters=10, thresh=0.4):
         '''
@@ -154,7 +170,7 @@ class Interaction():
         sig_mask: Binary mask indicating significant interactions based on the threshold.
         beta_interaction: Coefficients for the significant interaction terms.
         '''
-
+        print('Computing sig interactions using ORIGINAL interactions')
         self.params = {
             'fdr': fdr,
             'n_iters': n_iters,
@@ -173,7 +189,7 @@ class Interaction():
         )
 
         for i in range(n_iters):
-            sig_mask, _, _ = self.compute(fdr=fdr)
+            sig_mask, _, _ = self.compute(fdr=fdr, permuted=False)
             sig_interactions.append(sig_mask.copy())
 
             pbar.desc = f'Iteration {i}: Found {sig_mask.sum()} significant interactions'
@@ -201,9 +217,65 @@ class Interaction():
         self.beta_interaction = self.beta_interaction * self.sig_mask   # in case of underflow issues
         
         score = compute_auc(preds, self.y)
-        print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
+        self.score = score
+        self.n_sig_interactions = np.sum(self.sig_mask)
+        print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score} (ORIGINAL)')
 
+    def get_sig_interactions_permuted(self, fdr=0.5, n_iters=10, thresh=0.4):
+        '''
+        Attributes:
+        sig_interaction: Percentage of times an interaction term is significant across iterations.
+        sig_mask: Binary mask indicating significant interactions based on the threshold.
+        beta_interaction: Coefficients for the significant interaction terms.
+        '''
+        print('Computing sig interactions using PERMUTED interactions')
+        self.get_permuted_interactions(fdr=fdr, n_iters=n_iters, thresh=thresh)
+        
+        self.params = {
+            'fdr': fdr,
+            'n_iters': n_iters,
+            'thresh': thresh
+        }
+        
+        sig_interactions_perm = []
 
+        manager = enlighten.get_manager()
+        pbar = manager.counter(
+            total=n_iters, 
+            desc='Computing interactions', 
+            unit='iter', 
+            color='pink', 
+            autorefresh=True
+        )
+            
+        for i in range(n_iters):
+            sig_mask_perm, _, _ = self.compute(fdr=fdr, permuted=True)
+            sig_interactions_perm.append(sig_mask_perm.copy())
+
+            pbar.desc = f'Iteration {i}: Found {sig_mask_perm.sum()} significant interactions'
+            pbar.refresh()
+            pbar.count = i+1
+
+        pbar.close()
+
+        sig_interactions_perm = np.stack(sig_interactions_perm, axis=0)
+        sig_interactions_perm = np.mean(sig_interactions_perm, axis=0)
+        self.sig_interaction_perm = sig_interactions_perm
+        self.sig_mask_perm = np.where(sig_interactions_perm > thresh, 1, 0)
+
+        # Get the betas for the significant interactions
+        interaction_terms_perm  = self.interaction_terms_perm  * self.sig_mask_perm 
+        interaction_terms_perm  = interaction_terms_perm .reshape(self.n, self.k*self.l)
+        preds_perm , beta_all_perm  = self.fit_linear(interaction_terms_perm, self.y)
+
+        self.beta_interaction_perm  = beta_all_perm .reshape(self.k, self.l)
+        self.beta_interaction_perm  = self.beta_interaction_perm  * self.sig_mask_perm  # in case of underflow issues
+        
+        score_perm  = compute_auc(preds_perm, self.y)
+        self.score_perm  = score_perm 
+        self.n_sig_interactions_perm  = np.sum(self.sig_mask_perm)
+        print(f'Found {np.sum(self.sig_mask_perm )} significant interactions with AUC={score_perm} (PERMUTED)')
+        
     def filter_effect_size(self):
         ys = np.unique(self.y)
         assert len(ys) == 2, 'y must be binary'
@@ -241,7 +313,6 @@ class Interaction():
             self.sig_mask[-1, :] = 1
         
         self.sig_mask[-1, -1] = 0 # This term is meaningless
-        
 
         # Refit to get the new coefficients
         interaction_terms = self.interaction_terms * self.sig_mask
@@ -255,22 +326,27 @@ class Interaction():
         
         score = compute_auc(preds, self.y)
         print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
+        
+    def get_permuted_interactions(self, fdr=0.5, n_iters=10, thresh=0.4):
+        '''
+        Mismatching the TCR and PLM embeddings to get a null distribution of interactionss
+        '''
+        print('Computing permuted interactions')
+        zs = self.z_matrix.copy() # n x k
+        plms = self.plm_embedding.copy() # n x l
+        
+        # shuffle samples
+        zs_permuted = zs[np.random.permutation(zs.shape[0])]
+        plms_permuted = plms[np.random.permutation(plms.shape[0])]
+        self.z_matrix_perm = zs_permuted
+        self.plm_embedding_perm = plms_permuted
+        
+        # fit Z1_sig and Z2_plm interaction terms to y
+        self.interaction_terms_perm = self.get_interaction_terms(zs_permuted, plms_permuted)
+        
+                
+        
 
-
-
-
-    
-
-
-
-
-    
-    
-
-
-            
-
-
-
-
-
+        
+        
+       

@@ -29,7 +29,8 @@ def show_interactions(machop, save_path=None):
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
                 cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
-    ax1.set(ylabel='LFs', xlabel='PLM embedding', title='Interaction Coefficients')
+    ax1.set(ylabel='LFs', xlabel='PLM embedding', title='Interaction Coefficients: '+str(machop.n_sig_interactions)+' significant interactions, AUC='+str(round(machop.score,5)))
+    # print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
 
     # Plot sig_interaction
     sns.heatmap(data=df_sig, square=True, ax=ax2, vmin=0, vmax=1, 
@@ -55,6 +56,53 @@ def show_interactions(machop, save_path=None):
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
 
+def show_interactions_perm(machop, save_path=None):
+
+    beta_interaction_perm = machop.beta_interaction_perm
+    sig_interaction_perm = machop.sig_interaction_perm
+
+    index = machop.sig_LFs.copy()
+    columns = list(range(machop.l))
+    if not machop.interacts_only:
+        index.append('null')
+        columns[-1] = 'null'
+
+    df = pd.DataFrame(beta_interaction_perm, index=index, columns=columns)
+    max_beta = np.max(np.abs(beta_interaction_perm))
+
+    df_sig = pd.DataFrame(sig_interaction_perm, index=index, columns=columns)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 20))
+
+    # Plot beta_interaction
+    sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
+                cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
+    ax1.set(ylabel='LFs', xlabel='PLM embedding', title='Interaction Coefficients: '+str(machop.n_sig_interactions_perm)+' significant interactions, Permuted AUC='+str(round(machop.score_perm,5)))
+    # print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
+
+    # Plot sig_interaction
+    sns.heatmap(data=df_sig, square=True, ax=ax2, vmin=0, vmax=1, 
+                cmap='Blues', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
+    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
+    ax2.set(ylabel='LFs', xlabel='PLM embedding', title='Percentage of times significant')
+
+    # Indicate nonzero values
+    for i in range(df.shape[0]):
+        for j in range(df_sig.shape[1]):
+            if df.iloc[i, j] != 0:
+                ax1.text(j + 0.5, i + 0.5, f'{df.iloc[i, j]:.2f}', 
+                         ha='center', va='center', color='black')
+            
+            if df_sig.iloc[i, j] != 0:
+                ax2.text(j + 0.5, i + 0.5, f'{df_sig.iloc[i, j]:.2f}', 
+                         ha='center', va='center', color='black')
+
+    plt.tight_layout()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
 
 def show_performance(model, df, save_path=None, figsize=(6,6), order=None):
 
@@ -77,9 +125,10 @@ def show_performance(model, df, save_path=None, figsize=(6,6), order=None):
 
     means = df.groupby('index')['auc'].mean()
     for i, mean in zip(means.index, means):
-        plt.text(i, df['auc'].max() , f'Mean: {mean:.2f}', ha='center', va='bottom', fontsize=8, color='black')
+        plt.text(i, df['auc'].max() , f'Mean: {mean:.2f}', ha='center', va='bottom', fontsize=4, color='black')
 
-    plt.title(f'{model} Performance')
+    plt.title(f'{model.name} Performance')
+    plt.xticks(rotation=45, fontsize=10)
     plt.tight_layout()
 
     if save_path:
