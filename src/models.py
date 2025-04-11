@@ -16,6 +16,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tqdm import tqdm
+import enlighten
 
 class Estimator():
     def __init__(self, model):
@@ -131,7 +132,6 @@ class SimpleNN(nn.Module):
     
     def loss_fn(self, y_pred, y):
         return F.mse_loss(y_pred.reshape(-1), y.reshape(-1))
-    
 
 class EmbeddingDataset(Dataset):
     def __init__(self, X, y):
@@ -143,3 +143,4 @@ class EmbeddingDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+    

@@ -4,6 +4,7 @@ import os, pickle
 # from tqdm import tqdm
 import enlighten
 
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.linear_model import LinearRegression, Lasso
 from knockpy import KnockoffFilter
 
@@ -23,6 +24,7 @@ class Interaction():
         self.name = name
         self.slide_outs = slide_outs
         self.interacts_only = interacts_only
+        self.y = y
 
         if interacts_only:
             self.plm_embedding = plm_embed
@@ -31,21 +33,18 @@ class Interaction():
                 plm_embed, 
                 np.ones((plm_embed.shape[0], 1))])
 
-        self.y = y
-
-           
         if z_matrix is None:
             self.sig_LFs = get_sigLFs(slide_outs)
         else:
             self.sig_LFs = list(z_matrix.columns)
+        self.z_matrix = self.get_z_matrix(z_matrix, interacts_only=interacts_only)
 
-        self.z_matrix = self.get_z_matrix(
-            z_matrix, interacts_only=interacts_only)
+        # Scale features
+        self.plm_embedding = self.scale_features(self.plm_embedding)
+        self.z_matrix = self.scale_features(self.z_matrix)
     
-        
         self.n, self.k = self.z_matrix.shape
         self.l = self.plm_embedding.shape[1] 
-
         self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding) 
         
         if model == 'lasso':
@@ -54,6 +53,23 @@ class Interaction():
             self.model = LinearRegression()
         else:
             raise ValueError('Model not supported')
+    
+    def __str__(self):
+        return f'{self.name}'
+    
+    @staticmethod
+    def scale_features(X, minmax=False, feature_range=(-1, 1)):
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        
+        if minmax:
+            scaler = MinMaxScaler(feature_range=feature_range)
+        else:
+            scaler = StandardScaler()
+        
+        scaler.fit(X)
+        return scaler.transform(X)
+
 
     def get_z_matrix(self, z_matrix=None, interacts_only=True):
         
