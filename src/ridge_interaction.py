@@ -5,56 +5,61 @@ import os, pickle
 import enlighten
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
 from knockpy import KnockoffFilter
 
 from util import get_sigLFs, compute_cohens_d, compute_auc
 
-class Interaction():
-
+class RidgeInteraction():
+    
     def __init__(
             self, slide_outs, 
             plm_embed, y, 
             z_matrix=None,
             interacts_only=False, 
+            ridge_thresh=0.00001,
             model='LR',
             name='Model'
         ):
         
-        self.version = 'interaction'
+        self.version = 'ridge_interaction'
         self.name = name
         self.slide_outs = slide_outs
         self.interacts_only = interacts_only
+        self.plm_embedding = plm_embed
         self.y = y
-
-        if interacts_only:
-            self.plm_embedding = plm_embed
-        else:
-            self.plm_embedding = np.hstack([
-                plm_embed, 
-                np.ones((plm_embed.shape[0], 1))])
-
+        
         if z_matrix is None:
             self.sig_LFs = get_sigLFs(slide_outs)
         else:
             self.sig_LFs = list(z_matrix.columns)
         self.z_matrix = self.get_z_matrix(z_matrix, interacts_only=interacts_only)
-
+        
         # Scale features
         self.plm_embedding = self.scale_features(self.plm_embedding)
         self.z_matrix = self.scale_features(self.z_matrix)
-    
-        self.n, self.k = self.z_matrix.shape
-        self.l = self.plm_embedding.shape[1] 
-        self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_embedding) 
         
+        # ridge feature selection for PLMs
+        self.ridge_feature_selection(thresh=ridge_thresh)
+        
+        if interacts_only:
+            pass
+        else:
+            self.plm_subset = np.hstack([
+                self.plm_subset, 
+                np.ones((self.plm_subset.shape[0], 1))])
+
+        self.n, self.k = self.z_matrix.shape
+        self.l = self.plm_subset.shape[1] 
+        self.interaction_terms = self.get_interaction_terms(self.z_matrix, self.plm_subset) # subset!
+
         if model == 'lasso':
             self.model = Lasso(alpha=0.1)
         elif model == 'LR':
             self.model = LinearRegression()
         else:
             raise ValueError('Model not supported')
-    
+        
     def __str__(self):
         return f'{self.name}'
     
@@ -70,8 +75,7 @@ class Interaction():
         
         scaler.fit(X)
         return scaler.transform(X)
-
-
+    
     def get_z_matrix(self, z_matrix=None, interacts_only=True):
         
         if z_matrix is None:
@@ -85,7 +89,7 @@ class Interaction():
                     np.ones((n_obs, 1))])
 
         return z_matrix
-
+    
     @staticmethod
     def get_interaction_terms(z_matrix, plm_embedding):
         '''
@@ -106,6 +110,24 @@ class Interaction():
         rejections = kfilter.forward(X=interaction_terms, y=y, fdr=fdr, shrinkage="ledoitwolf")
         return rejections
     
+    def ridge_feature_selection(self, thresh=0.00001):
+        '''Ridge regression for feature selection of the raw PLM embedding (non-PCA)'''
+        ridge = Ridge(alpha=1, fit_intercept=True) # change ridge params 
+        ridge.fit(self.plm_embedding, self.y)
+        
+        ridge_coef = np.abs(ridge.coef_)
+        selected_idx = np.where(ridge_coef > thresh)[0]
+        
+        plm_subset = self.plm_embedding[:, selected_idx]
+    
+        self.plm_subset = plm_subset
+        self.plm_ridge_coef = ridge_coef # save coefs
+        self.plm_subset_idx = selected_idx # save indices
+        
+        print(f'Ridge feature selection: {plm_subset.shape[1]} features selected of {self.plm_embedding.shape[1]}')
+        
+        
+    
     def fit_linear(self, z_matrix, y):
         '''fit z-matrix in linear part to get LP'''
         reg = self.model.fit(z_matrix, y)
@@ -114,7 +136,7 @@ class Interaction():
         beta = reg.coef_       
 
         return LP, beta
-
+    
     def compute(self, fdr=0.1, permuted=False):
         if permuted:
             z_matrix = self.z_matrix_perm
@@ -162,7 +184,7 @@ class Interaction():
         beta_interaction = beta_interaction
 
         return sig_mask, beta_interaction, sig_interaction
-
+    
     def get_joint_embed(self):
 
         sig_mask = self.sig_mask.astype(bool)
@@ -300,8 +322,8 @@ class Interaction():
 
         group1z1 = self.z_matrix[self.y == ys[0]]
         group2z1= self.z_matrix[self.y == ys[1]]
-        group1z2 = self.plm_embedding[self.y == ys[0]]
-        group2z2 = self.plm_embedding[self.y == ys[1]]
+        group1z2 = self.plm_subset[self.y == ys[0]]
+        group2z2 = self.plm_subset[self.y == ys[1]]
 
         d_matrix = np.zeros((self.k, self.l))
 
@@ -347,11 +369,11 @@ class Interaction():
         
     def get_permuted_interactions(self, fdr=0.5, n_iters=10, thresh=0.4):
         '''
-        Mismatching the TCR and PLM embeddings to get a null distribution of interactionss
+        Mismatching the TCR and PLM embeddings to get a null distribution of interactions
         '''
         print('Computing permuted interactions')
         zs = self.z_matrix.copy() # n x k
-        plms = self.plm_embedding.copy() # n x l
+        plms = self.plm_subset.copy() # n x l
         
         # shuffle samples
         zs_permuted = zs[np.random.permutation(zs.shape[0])]

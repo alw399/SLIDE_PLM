@@ -28,10 +28,22 @@ def show_interactions(machop, save_path=None, z1=None, z2=None):
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 20))
 
+    if machop.interacts_only:
+        add = 0
+    else:
+        add = 1
+    
+    if machop.version == 'interaction':
+        x_labels = list(range(machop.l)) + ['null']*add
+    elif machop.version == 'ridge_interaction':
+        x_labels = list(machop.plm_subset_idx) + ['null']*add
+    else:
+        raise ValueError(f'Unknown version: {machop.version}')
+    
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
                 cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
+    ax1.set_xticklabels(x_labels, rotation=45, ha='right')
     ax1.set(
         ylabel=z1, xlabel=z2, 
         title='Interaction Coefficients: '+str(machop.n_sig_interactions)+' significant interactions, AUC='+str(round(machop.score,5))
@@ -41,7 +53,7 @@ def show_interactions(machop, save_path=None, z1=None, z2=None):
     # Plot sig_interaction
     sns.heatmap(data=df_sig, square=True, ax=ax2, vmin=0, vmax=1, 
                 cmap='Blues', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
+    ax2.set_xticklabels(x_labels, rotation=45, ha='right')
     ax2.set(ylabel=z1, xlabel=z2, title='Percentage of times significant')
 
     # Indicate nonzero values
@@ -80,17 +92,29 @@ def show_interactions_perm(machop, save_path=None):
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 20))
 
+    if machop.interacts_only:
+        add = 0
+    else:
+        add = 1
+    
+    if machop.version == 'interaction':
+        x_labels = list(range(machop.l)) + ['null']*add
+    elif machop.version == 'ridge_interaction':
+        x_labels = list(machop.plm_subset_idx) + ['null']*add
+    else:
+        raise ValueError(f'Unknown version: {machop.version}')
+    
     # Plot beta_interaction
     sns.heatmap(data=df, square=True, ax=ax1, vmin=-max_beta, vmax=max_beta, 
                 cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
+    ax1.set_xticklabels(x_labels, rotation=45, ha='right')
     ax1.set(ylabel='LFs', xlabel='PLM embedding', title='Interaction Coefficients: '+str(machop.n_sig_interactions_perm)+' significant interactions, Permuted AUC='+str(round(machop.score_perm,5)))
     # print(f'Found {np.sum(self.sig_mask)} significant interactions with AUC={score}')
 
     # Plot sig_interaction
     sns.heatmap(data=df_sig, square=True, ax=ax2, vmin=0, vmax=1, 
                 cmap='Blues', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
+    ax2.set_xticklabels(x_labels, rotation=45, ha='right')
     ax2.set(ylabel='LFs', xlabel='PLM embedding', title='Percentage of times significant')
 
     # Indicate nonzero values
@@ -193,16 +217,28 @@ def plot_double_heatmap(machop, beta_interaction, sig_interaction,
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 6))
 
+    if machop.interacts_only:
+        add = 0
+    else:
+        add = 1
+    
+    if machop.version == 'interaction':
+        x_labels = list(range(machop.l)) + ['null']*add
+    elif machop.version == 'ridge_interaction':
+        x_labels = list(machop.plm_subset_idx) + ['null']*add
+    else:
+        raise ValueError(f'Unknown version: {machop.version}')
+    
     # Plot beta_interaction
     sns.heatmap(data=df_sig, square=True, ax=ax1, vmin=-max_sig, vmax=max_sig, 
                 cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
+    ax1.set_xticklabels(x_labels, rotation=45, ha='right')
     ax1.set(ylabel='LFs', xlabel='PLM embedding', title=titles[0])
 
     # Plot sig_interaction
     sns.heatmap(data=df, square=True, ax=ax2, vmin=-max_beta, vmax=max_beta, 
                 cmap='vlag', cbar_kws={'orientation': 'horizontal', 'shrink': 0.3})
-    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
+    ax2.set_xticklabels(x_labels, rotation=45, ha='right')
     ax2.set(ylabel='LFs', xlabel='PLM embedding', title=titles[1])
 
     plt.tight_layout()
