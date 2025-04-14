@@ -35,7 +35,7 @@ def show_interactions(machop, save_path=None, z1=None, z2=None):
     
     if machop.version == 'interaction':
         x_labels = list(range(machop.l)) + ['null']*add
-    elif machop.version == 'ridge_interaction':
+    elif machop.version == 'standard_ridge_interaction' or machop.version == 'bayesian_ridge_interaction':
         x_labels = list(machop.plm_subset_idx) + ['null']*add
     else:
         raise ValueError(f'Unknown version: {machop.version}')
@@ -99,7 +99,7 @@ def show_interactions_perm(machop, save_path=None):
     
     if machop.version == 'interaction':
         x_labels = list(range(machop.l)) + ['null']*add
-    elif machop.version == 'ridge_interaction':
+    elif machop.version == 'standard_ridge_interaction' or machop.version == 'bayesian_ridge_interaction':
         x_labels = list(machop.plm_subset_idx) + ['null']*add
     else:
         raise ValueError(f'Unknown version: {machop.version}')
@@ -224,7 +224,7 @@ def plot_double_heatmap(machop, beta_interaction, sig_interaction,
     
     if machop.version == 'interaction':
         x_labels = list(range(machop.l)) + ['null']*add
-    elif machop.version == 'ridge_interaction':
+    elif machop.version == 'standard_ridge_interaction' or machop.version == 'bayesian_ridge_interaction':
         x_labels = list(machop.plm_subset_idx) + ['null']*add
     else:
         raise ValueError(f'Unknown version: {machop.version}')

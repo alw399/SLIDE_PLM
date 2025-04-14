@@ -5,7 +5,7 @@ import os, pickle
 import enlighten
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.linear_model import LinearRegression, Lasso, Ridge
+from sklearn.linear_model import LinearRegression, Lasso, Ridge, BayesianRidge
 from knockpy import KnockoffFilter
 
 from util import get_sigLFs, compute_cohens_d, compute_auc
@@ -17,12 +17,23 @@ class RidgeInteraction():
             plm_embed, y, 
             z_matrix=None,
             interacts_only=False, 
+            ridge_model = 'Standard',
             ridge_thresh=0.00001,
             model='LR',
             name='Model'
         ):
         
-        self.version = 'ridge_interaction'
+        if ridge_model == 'Standard':
+            print('Using standard ridge regression for PLM feature selection')
+            self.ridge_model = Ridge(alpha=1, fit_intercept=True) # params?
+            self.version = 'standard_ridge_interaction'
+        elif ridge_model == 'Bayesian':
+            print('Using Bayesian ridge regression for PLM feature selection')
+            self.ridge_model = BayesianRidge(fit_intercept=True) # params?
+            self.version = 'bayesian_ridge_interaction'
+        else:
+            raise ValueError('Ridge model not supported')
+        
         self.name = name
         self.slide_outs = slide_outs
         self.interacts_only = interacts_only
@@ -112,7 +123,8 @@ class RidgeInteraction():
     
     def ridge_feature_selection(self, thresh=0.00001):
         '''Ridge regression for feature selection of the raw PLM embedding (non-PCA)'''
-        ridge = Ridge(alpha=1, fit_intercept=True) # change ridge params 
+        ridge = self.ridge_model 
+        
         ridge.fit(self.plm_embedding, self.y)
         
         ridge_coef = np.abs(ridge.coef_)
