@@ -157,7 +157,7 @@ def show_performance(model, df, save_path=None, figsize=(6,6), order=None):
     for i, mean in zip(means.index, means):
         plt.text(i, df['auc'].max()*1.05 , f'Mean: {mean:.2f}', ha='center', va='bottom', fontsize=6, color='black')
 
-    plt.title(f'{model.name} Performance')
+    plt.title(f'{model} Performance')
     plt.xticks(rotation=45, fontsize=10)
     plt.tight_layout()
 
