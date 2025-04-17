@@ -136,7 +136,7 @@ class RidgeInteraction():
         self.plm_ridge_coef = ridge_coef # save coefs
         self.plm_subset_idx = selected_idx # save indices
         
-        print(f'Ridge feature selection: {plm_subset.shape[1]} features selected of {self.plm_embedding.shape[1]}')
+        print(f'Ridge feature selection: {plm_subset.shape[1]} features selected of {self.plm_embedding.shape[1]} ({100*plm_subset.shape[1]/self.plm_embedding.shape[1]:.2f}%)')
         
         
     
